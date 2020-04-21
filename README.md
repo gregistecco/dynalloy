@@ -8,7 +8,7 @@ DynAlloy is an extension of the formal specification language [Alloy](alloytools
 
 Alloy is suitable for specifying static structural properties of systems, but is less adequate for the specification of dynamic properties of systems, i.e., properties regarding executions. **DynAlloy extends Alloy by incorporating the notion of action to better describe state change and properties of state changing situations.** An example is available in this [tutorial](https://github.com/gregistecco/dynalloy/wiki).
 
-##Download
+## Download
 
 Last release:
 [Download](https://github.com/gregistecco/dynalloy/releases)
