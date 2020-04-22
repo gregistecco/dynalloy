@@ -1,6 +1,6 @@
 # DynAlloy Analyzer
 
-DynAlloy is an extension of the formal specification language [Alloy](alloytools.org). Alloy is a relatively popular formal specification language because of various reasons, including:
+DynAlloy is an extension of the formal specification language [Alloy](https://alloytools.org). Alloy is a relatively popular formal specification language because of various reasons, including:
 - it has simple formal semantics, based on relations
 - its syntax is simple, with a few constructs (with intuitive meaning)
 - its specifications follow an OO-like style
