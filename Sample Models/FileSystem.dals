@@ -1,0 +1,72 @@
+/**
+Case study taken from Imperative Alloy
+*/
+
+sig Name {}
+abstract sig Path {}
+sig NonEmptyPath extends Path { first: Name, rest: Path }
+sig EmptyPath extends Path {}
+
+abstract sig INode {}
+sig DirNode extends INode { files: Name -> INode}
+one sig RootNode extends DirNode {}
+sig FileNode extends INode { data: Data }
+sig Data {}
+
+one sig MVar {
+	path: Path,
+	current: INode,
+	mdata: Data
+}
+
+action navigate[m : MVar]{
+pre{}
+post{m'.path = m.path.rest and m'.current = (MVar.path.first).(MVar.current.files)}
+}
+
+
+action currentData[m: MVar]{
+pre{}
+post{m'.mdata = m.current.data}
+}
+
+program read [m: MVar] {
+	while (m.current !in FileNode) do {
+		navigate[m]
+	};
+	currentData[m]
+}
+
+action asign [m : MVar, f : INode]{
+	pre{}
+	post{f'.data = m.mdata}
+}
+
+program write [m : MVar] var [file : INode] {
+	while (m.current !in FileNode) do {
+		navigate[m]
+	};
+	asign [m, file]
+}
+
+one sig Temp{tdata : Data}
+
+action asign2[t : Temp, m : MVar]{
+pre{}
+post{t'.tdata = m.mdata}
+}
+
+assertCorrectness readMatchesPriorWrite[m : MVar, t : Temp]{
+pre{m.current = RootNode && (no f: FileNode | f.data = m.mdata)}
+program{
+	call write[m];
+	asign2[t, m];
+	call read[m]
+}
+post{t'.tdata = m'.mdata}
+}
+
+check readMatchesPriorWrite for 4 lurs 10
+check readMatchesPriorWrite for 6 lurs 10
+check readMatchesPriorWrite for 8 lurs 10
+

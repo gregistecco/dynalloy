@@ -1,0 +1,126 @@
+module examples/case_studies/crossRiver
+
+/*
+ * The classic river crossing puzzle. A farmer is carrying a fox, a
+ * chicken, and a sack of grain. He must cross a river using a boat
+ * that can only hold the farmer and at most one other thing. If the
+ * farmer leaves the fox alone with the chicken, the fox will eat the
+ * chicken; and if he leaves the chicken alone with the grain, the
+ * chicken will eat the grain. How can the farmer bring everything
+ * to the far side of the river intact?
+ *
+ *	Original version authors: Greg Dennis, Rob Seater
+ */
+
+/**
+ * The farmer and all his possessions will be represented as Objects.
+ * Some objects eat other objects when the Farmer's not around.
+ */
+abstract sig Object { eats:  set Object }
+one sig Farmer, Fox, Chicken, Grain extends Object { }
+
+/**
+ * Define what eats what when the Farmer' not around.
+ * Fox eats the chicken and the chicken eats the grain.
+ */
+fact { eats = Fox->Chicken + Chicken->Grain }
+
+/**
+* Atomic action to cross the river from the 'from' side to the 'to' side. 
+* Farmer must be involved in crossing and can take up to one object with him.
+* Objects in the 'from' side become unsupervised and thus eat each other. 
+*/
+act crossRiver[from, to: set Object] {
+    pre { Farmer in from }
+    post { one x: from | from' = from - x - Farmer - from'.eats && to' = to + x + Farmer }
+}
+
+/**
+* Program to solve the cross river puzzle.
+* Start with all the objects in the 'near' side and try to cross all the objects to the 'far' side.
+* Use the choice selection to cross from one side to the other and use the * to iterate.
+* At the last it checks that all the objects are in 'far' side.
+*/
+prog solvePuzzle[near: set Object, far: set Object] {
+    assume (Object in near && no far);
+    (crossRiver[near, far] + crossRiver[far, near])*;
+    [ Object in far ]?
+}
+
+run solvePuzzle for 4 lurs 7
+
+/**
+ * no Object can be in two places at once
+ * this is implied by both definitions of crossRiver
+ */
+assert NoQuantumObjects [near: set Object, far: set Object] {
+    pre { no (near & far) }
+    prog { (crossRiver[near, far] + crossRiver[far, near])* }
+    post { no (near' & far') } 
+} 
+
+
+check NoQuantumObjects for 4 lurs 10
+
+
+/**
+* This assertion states that the cross river puzzle transitions cannot make the farmer disappear.
+*/
+assert farmerAlwaysThere[near: set Object, far: set Object] {
+    pre { Farmer in (near +  far) }
+    prog { (crossRiver[near, far] + crossRiver[far, near])* }
+    post { Farmer in (near' + far') } 
+} 
+
+check farmerAlwaysThere for 4 lurs 10
+
+/**
+* This assertion states that once an object is lost it cannot be recovered.
+*/
+assert noResurrection[near: set Object, far: set Object, x: Object] {
+	pre { Object in near && no far }
+    prog {  (crossRiver[near, far] + crossRiver[far, near])* ;
+               [x ! in (near+far)]? ;
+		(crossRiver[near, far] + crossRiver[far, near])*	
+            }
+	post { !(x in (near'+far')) }
+}
+
+check noResurrection for 4 lurs 10
+
+/**
+* Atomic action that non deterministically chooses an object from a set. 
+*/
+act choose[x: univ, s: set univ] {
+	pre { some s }
+	post{ x' in s }
+}
+
+/**
+* Program to cross the river from the 'from' side to the 'to' side. 
+* Farmer must be involved in crossing and can take up to one object with him.
+* Objects in the 'from' side become unsupervised and thus eat each other. 
+*/
+prog refinedCrossRiver [from: set Object, to: set Object] var [x: Object] {
+	assume (Farmer in from);
+	choose[x, from];
+	from := from - (Farmer + x);
+	from := from - from.eats;
+	to := to + (Farmer + x) 
+}
+
+/**
+* Program to solve the cross river puzzle.
+* Start with all the objects in the 'near' side and try to cross all the objects to the 'far' side.
+* Use the choice selection to cross from one side to the other calling 'refinedCrossRiver 
+* and use the * to iterate.
+* At the last it checks that all the objects are in 'far' side.
+*/
+prog refinedSolvePuzzle[near: set Object, far: set Object]{
+	assume(Object in near and no far);	
+	(call refinedCrossRiver[near, far] +
+	 call refinedCrossRiver[far, near])* ;
+	[Object in far]?
+}
+
+run refinedSolvePuzzle for 3 lurs 7

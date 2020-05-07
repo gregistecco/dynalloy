@@ -1,0 +1,131 @@
+module ringElection
+
+/**
+ * It shows how to model a well-known distributed algorithm for leader election.
+ * We will consider the case in which the processes form a ring. 
+ * We'll assume that processes have unique identiers that are totally ordered; These might, for example, 
+ * be the serial numbers (the so-called MAC ID's) of the network cards of the machines 
+ * on which they are running. And leader will be the process with the largest identifier.
+ * A simple and well-known protocol has the processes pass their identers 
+ * tokens around the ring in some direction (say clockwise). Each process examines each identifier it receives. 
+ * If the identity is less than its own identity, it consumes the token. 
+ * If the identity is greater than its own, it passes the token on. If the identifier equals its own identity,
+ * it knows the token must have passed all the way around the ring, so it elects itself leader.
+ *
+ *	Original version is in Alloy in the book: 
+ * "Software Abstractions. Logic, Language, and Analysis." (Daniel Jackson 2006).
+ */
+
+open util/ordering[Process] as PO
+
+/**
+ * Process signature. 
+ * They will be parameters of programs.
+ */
+sig Process {
+	succ: Process
+}
+
+/**
+ * The constraint that all processes are reachable from any process by following succ repeatedly
+ */
+fact Ring {all p: Process | Process in p.^succ}
+
+/**
+ * Atomic action that non deterministically chooses an object from a set. 
+ */
+act choose[x: univ, s: set univ] {
+	pre { some s }
+	post { x' in s }
+}
+
+/**
+ * Program that describe the allowed state transitions. In a given step, non deterministically identier (id) is chosen 
+ * from the pool associated with a process (toSend) and moved to the pool associated with its successor (toRem)
+ */
+program step[p: Process, toSend: Process -> set Process, id: Process, toRem: set Process, aux: set Process] {
+	aux := p.toSend ;
+	choose[id, aux] ;
+	toSend := toSend - (p->id) ;
+	toSend := toSend + (p.succ -> id) ;
+	toRem := PO/prevs[p.succ] ;
+	toSend := toSend - (p.succ -> toRem) 
+}
+/**
+ * Program that chooses a leader and models the dynamism of the process network.
+ * A process can perform a step, or its predecessor (succ.p) performs the step, or it does nothing.
+ */
+program leaderElection[toSend: Process -> set Process, 
+									elected: set Process, 
+									prevToSend: Process -> set Process,
+									p: Process, other: Process,
+									id: Process, toRem: set Process, aux: set Process] {
+	( 
+		choose[p, Process] ;
+		other := p.succ ;   
+		prevToSend := toSend ;
+	    (skip + call step[p, toSend, id, toRem, aux] + call step[other, toSend, id, toRem, aux]);
+		elected := elected + {p: Process | p in p.toSend - p.prevToSend }
+	)* 
+}
+
+/**
+ * Program that chooses at least one leader.
+ * First it is assumed that there is no leader.
+ */
+program runLeaderElection[toSend: Process -> set Process, 
+									elected: set Process, 
+									prevToSend: Process -> set Process,
+									p: Process, other: Process,
+									id: Process, toRem: set Process, aux: set Process] {
+	assume (no elected and toSend = iden:>Process) ;
+	call leaderElection[toSend, elected, prevToSend, p, other, id, toRem, aux] ;
+	[some elected]?
+}
+
+/**
+ * This assertion states that there is at most one elected process
+ */
+assertCorrectness atMostOneLeader[toSend: Process -> set Process, 
+									elected: set Process, 
+									prevToSend: Process -> set Process,
+									p: Process, other: Process,
+									id: Process, toRem: set Process, aux: set Process] {
+	pre { no elected and toSend = iden:>Process }
+	prog { call leaderElection[toSend, elected, prevToSend, p, other, id, toRem, aux] }
+	post { lone elected' }
+}
+
+/**
+ * This assertion states that there is at least one elected process
+ */
+assertCorrectness atLeastOneLeader[toSend: Process -> set Process, 
+									elected: set Process, 
+									prevToSend: Process -> set Process,
+									p: Process, other: Process,
+									id: Process, toRem: set Process, aux: set Process] {
+	pre { no elected and toSend = iden:>Process }
+	prog { call leaderElection[toSend, elected, prevToSend, p, other, id, toRem, aux] }
+	post { some elected' }
+}
+
+check atLeastOneLeader for 3 Process lurs 10
+
+
+
+assertCorrectness Safety [toSend: Process -> set Process, 
+									elected: set Process, 
+									prevToSend: Process -> set Process,
+									p: Process, other: Process,
+									id: Process, toRem: set Process, aux: set Process] {
+	pre { no elected and toSend = iden:>Process }
+	prog { call leaderElection[toSend, elected, prevToSend, p, other, id, toRem, aux] }
+	post{ some elected' implies one elected'}
+}
+
+//cases studies
+
+check Safety for 3 Process lurs 10
+check Safety for 3 Process lurs 15
+check Safety for 5 Process lurs 10
+check Safety for 5 Process lurs 15

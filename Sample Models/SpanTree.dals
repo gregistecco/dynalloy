@@ -1,0 +1,78 @@
+module span_tree
+
+open util/graph[Process]
+
+sig Process {
+  adj : set Process,
+  lvl: lone Int,
+  parent: lone Process
+}
+
+one sig Root in Process {}
+
+fact processGraph {
+  noSelfLoops[adj]
+  undirected[adj]
+  Process in Root.*adj
+}
+
+pred Init {
+  no lvl
+  no parent
+}
+
+act Nop [p : Process]{
+	pre{}
+	post{p'.lvl = p.lvl and p'.parent = p.parent}
+}
+
+pred MayAct[p : Process] {
+  no p.lvl
+  (p = Root || some p.adj.lvl)
+}
+
+
+
+act choose[x: Process] {
+	pre { }
+	post { one x' }
+}
+
+
+act setParent [p, adj : Process]{
+pre{}
+post{p'.parent = adj and p'.lvl = add[adj.lvl,1]}
+}
+
+program spantree [] var [p, a: Process] {
+	(choose[p];
+	[no p.lvl]?;
+	if (no p.parent.lvl){
+		p := Root
+	}else{
+		choose[p];
+		choose[a];
+		[p in a.adj and no p.lvl and some a.lvl]?;
+--		setParent[p, a]
+		p.parent := a;
+		p.lvl := add[a.lvl,1]
+	})*
+
+}
+
+run spantree for 4 Process lurs exactly 10
+
+assertCorrectness Safety[]{
+pre{Init}
+program (call spantree[])
+post{no p1 : Process | p1 in p1.^(parent)}
+}
+
+check Safety for 5 Process lurs 5
+check Safety for 5 Process lurs 10
+
+check Safety for 8 Process lurs 5
+check Safety for 8 Process lurs 10
+
+check Safety for 10 Process lurs 5
+check Safety for 10 Process lurs 10
