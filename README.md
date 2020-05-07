@@ -22,7 +22,7 @@ Last release:
 
 ##### [Tutorial](https://github.com/gregistecco/dynalloy/wiki)
 
-##### [Sample Models]([Sample Models](https://github.com/gregistecco/dynalloy/tree/master/Sample%20Models))
+##### [Sample Models](https://github.com/gregistecco/dynalloy/tree/master/Sample%20Models)
 
 ---
 
