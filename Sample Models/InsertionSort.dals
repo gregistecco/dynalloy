@@ -1,0 +1,54 @@
+/**
+Case study taken from Imperative Alloy
+*/
+
+sig Secuence { elts : seq Int}
+
+pred sorted [elts : seq Int] {
+	all i: elts.inds - elts.lastIdx | let i' = i + 1 | i.elts <= i'.elts
+}
+
+
+
+one sig Cnt { cur: Int}
+
+pred minIdx [s: seq Int, c, i: Int]{
+	i>=c && no i': s.inds | i' >= c && i'.s<i.s
+}
+
+action insertionStep [s: Secuence, c: Cnt, i: Int] {
+	pre{minIdx[s.elts, c.cur, i]}
+	post{c'.cur = c.cur + 1 and 
+	s'.elts = s.elts ++ ((c.cur)->i.(s.elts)) ++ (i->c.cur.(s.elts))}
+}
+
+action asign[i: Int, s: Secuence]{
+	pre{}
+	post{i' = s.elts.inds}
+}
+
+action init[c: Cnt]{
+pre{}
+post{c'.cur = 0}
+}
+
+program insertionSort [s: Secuence, c: Cnt] var [i: Int]{
+
+	init[c];
+	while (c.cur != s.elts.lastIdx) do{
+		asign[i,s];
+		insertionStep[s, c, i]
+	}
+}
+
+assertCorrectness sortWorks [s: Secuence, c: Cnt] {
+	pre{}
+	program{
+		call insertionSort[s,c]
+	}
+	post{sorted[s'.elts]}
+}
+
+check sortWorks for 4 lurs 10
+check sortWorks for 5 lurs 10
+check sortWorks for 6 lurs 10
