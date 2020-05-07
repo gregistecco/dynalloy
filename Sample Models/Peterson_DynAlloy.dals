@@ -1,0 +1,152 @@
+module examples/algorithms/peterson
+
+/*
+ * Model of Peterson's algorithm for mutual exclusion of n
+ * processes. The names kept similar to Murphi specification
+ * to make correspondence clear.
+ */
+
+open util/ordering[priority] as po
+
+sig pid { }
+
+sig priority { }
+
+fact {  #priority = (#pid) + 1 }
+
+abstract sig label_t {}
+
+// here subtyping would help
+one sig L0, L1, L2, L3, L4, noTrans extends label_t { }
+
+pred L0pre[i : pid, P : pid -> one label_t]{
+	(i -> L0) in P
+}
+
+program L0Trans[i : pid, P : pid -> one label_t,  localj : pid -> priority] {
+	[L0pre[i,P]]?;
+	localj := localj ++ (i -> po/next[po/first]);
+	P := P ++ (i -> L1)
+}
+
+pred L1pre[i : pid, P : pid -> one label_t]{
+	(i -> L1) in P
+}
+
+program L1Trans[i : pid, P : pid -> one label_t, Q : pid -> one priority, localj : pid -> priority]{
+	[L1pre[i, P]]?;
+	Q := Q ++ (i -> localj[i]);
+	P := P ++ (i -> L2)
+}
+
+
+pred L2pre[i : pid, P : pid -> one label_t]{
+	(i -> L2) in P
+}
+
+program L2Trans[i : pid, P : pid -> one label_t, turn : priority -> pid, localj : pid -> priority]{
+	[L2pre[i,P]]?;
+	P := P ++ (i -> L3);
+	turn := turn ++ (localj[i] -> i)
+}
+
+
+
+pred L3pre[i : pid, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	(i -> L3) in P
+	all k : pid - i | po/lt[Q[k], localj[i]]  || (turn[localj[i]] != i)
+}
+
+program L3Trans[i : pid, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	[L3pre[i, P, Q, turn, localj]]?;
+	localj := localj ++ (i -> (po/next[localj[i]]));
+	if (po/lt[localj[i], po/last]){
+		P := P ++ (i -> L1)
+	}else{
+		P := P ++ (i -> L4)
+	}
+}
+
+
+pred L4pre[i : pid, P : pid -> one label_t]{
+	(i -> L4) in P
+}
+
+program L4Trans[i : pid, P : pid -> one label_t, Q : pid -> one priority]{
+	[L4pre[i, P]]?;
+	P := P ++ (i -> L0);
+	Q := Q ++ (i -> po/first)
+}
+
+
+program RealTrans[i : pid, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	((call L0Trans[i, P, localj]) + 
+	(call L1Trans[i, P, Q, localj]) + 
+	(call L2Trans[i, P, turn, localj]) + 
+	(call L3Trans[i, P, Q, turn, localj]) +
+	(call L4Trans[i, P, Q]))
+}
+
+pred Init [P : pid -> one label_t, Q : pid -> one priority, turn: priority -> pid, localj: pid -> priority]{
+	all i : pid {
+		(i -> L0) in P
+		(i -> po/first) in Q
+	}
+	no turn
+	no localj
+}
+
+pred InitAlt [P : pid -> one label_t, Q : pid -> one priority, turn: priority -> pid, localj: pid -> priority, l: lone label_t]{
+	all i : pid {
+		(i -> L0) in P
+		(i -> po/first) in Q
+	}
+	no turn
+	no localj
+	no l
+}
+
+action choose[i : pid]{
+	pre{}
+	post{some i'}
+}
+
+pred noPre [P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	all i: pid | !(L0pre[i, P]) and !(L1pre[i, P]) and !(L2pre[i, P]) and !(L3pre[i, P, Q, turn, localj]) and !(L4pre[i, P])
+	
+}
+
+action Skip [l : label_t, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	pre{noPre[P, Q, turn, localj]}
+	post{l' = noTrans}
+}
+
+assertCorrectness Safety [l : lone label_t, i : pid, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+	pre{Init[P, Q, turn, localj]} 
+	program {  
+		(
+			( choose[i] ;
+			call RealTrans[i, P, Q, turn, localj]
+			) +
+			Skip[l, P, Q, turn, localj]
+		)*
+	}
+	post{all disj i1, i2 : pid | not  (P'[i1] = L4 && P'[i2] = L4)}
+}
+
+assertCorrectness NotStuck [l : lone label_t, i : pid, P : pid -> one label_t, Q : pid -> one priority, turn : priority -> pid, localj : pid -> priority]{
+pre{InitAlt[P, Q, turn, localj, l]}
+program {  
+         ( 
+          ( choose[i] ; 
+             call RealTrans[i, P, Q, turn, localj]
+          ) + 
+          Skip[l, P, Q, turn, localj]
+         )*
+	}
+post{no l'}
+}
+
+check Safety for 10 but 5 pid, 6 priority, 6 label_t lurs 15
+check Safety for 10 but 6 pid, 7 priority, 6 label_t lurs 15
+check Safety for 10 but 7 pid, 8 priority, 6 label_t lurs 15
