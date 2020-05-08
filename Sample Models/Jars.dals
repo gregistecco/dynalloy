@@ -1,0 +1,66 @@
+open util/integer
+
+sig State {
+	jarraA: Int,
+	jarraB: Int
+}
+fact {
+	all e: State | gte[e.jarraA,0] && gte[e.jarraB,0] &&
+                           lte[e.jarraA,4] && lte[e.jarraB,3]
+}
+
+pred postTransferirDeA[e,e':State]{
+	(gte[add[e.jarraB,e.jarraA],3] && eq[e'.jarraB,3] && eq[e'.jarraA, sub[e.jarraA, sub[3,e.jarraB]]]) ||
+	(lt[add[e.jarraA,e.jarraB], 3] && eq[e'.jarraB, add[e.jarraA, e.jarraB]] && eq[e'.jarraA, 0]) 
+}
+
+pred postTransferirDeB[e,e':State]{
+	(gte[add[e.jarraB,e.jarraA],3] && eq[e'.jarraA,4] && eq[e'.jarraB, sub[e.jarraB, sub[4,e.jarraA]]]) ||
+	(lt[add[e.jarraA,e.jarraB], 3] && eq[e'.jarraA, add[e.jarraA, e.jarraB]] && eq[e'.jarraB, 0])
+
+}
+action vaciarA[e:State]{
+	pre{gt[e.jarraA,0]}
+	post{eq[e'.jarraA,0] && eq[e.jarraB,e'.jarraB]}
+}
+
+action vaciarB[e:State]{
+	pre{gt[e.jarraB,0]}
+	post{eq[e'.jarraB,0] && eq[e.jarraA,e'.jarraA]}
+}
+
+action llenarA[e:State]{
+	pre{lt[e.jarraA,4]}
+	post{eq[e'.jarraA,4] && eq[e.jarraB,e'.jarraB]}
+}
+
+action llenarB[e:State]{
+	pre{lt[e.jarraB,3]}
+	post{eq[e'.jarraB,3] && eq[e.jarraA,e'.jarraA]}
+}
+
+action transferirDeA[e:State]{
+	pre{lt[e.jarraB,3] && gt[e.jarraA,0]}
+	post{postTransferirDeA[e,e'] }
+}
+
+action transferirDeB[e:State]{
+	pre{lt[e.jarraA,4] && gt[e.jarraB,0]}
+	post{postTransferirDeB[e,e']}
+}
+
+pred init[e: State] {
+    eq[e.jarraA, 0] && eq[e.jarraB, 0]
+}
+
+pred final[e: State] {
+    eq[e.jarraA, 2] || eq[e.jarraB, 2]
+}
+
+program winGame[e:State]{
+	[init[e]]?;
+	repeat{vaciarA[e] + vaciarB[e] + llenarA[e] + llenarB[e] + transferirDeA[e] + transferirDeB[e]};
+	[final[e]]?
+}
+
+run winGame for 7 but 5 int lurs 6

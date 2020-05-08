@@ -1,0 +1,57 @@
+/*
+Simple DynAlloy model of sequential search. It includes a model of sequences, 
+and uses Alloy's booleans.
+Authors: Nazareno Aguirre, Cesar Cornejo, Sonia Permigiani, Mariano Politano, 
+Pablo Ponzio, Fernando Raverta and German Regis.
+Date: 20/08/2015
+Revision: 1 
+*/
+open util/boolean
+
+// (Uninterpreted) elements that compose sequences
+sig Elem { }
+
+// Sequences have a set of indexes (integers), a length, and a mapping that
+// for each index, returns the corresponding element stored in it.
+sig Seq {
+	idx: set Int,
+	length: Int,
+	at: idx -> one Elem
+}
+
+// Fact characterizing sequences: length is >=0, the index domain is the range
+// [0, length-1], and the sequence has nothing outside its index domain. 
+fact ValidSequences { 
+	(all s: Seq | gte[s.length,0]) &&
+	(all s: Seq | all i: Int | gte[i,0] && lt[i,s.length] => some s.at[i]) &&
+	(all s: Seq | all i: Int | gte[i,s.length] => no s.at[i]) &&
+	(all s: Seq | all i: Int | lt[i,0] => no s.at[i])
+}
+
+// DynAlloy program for sequential search. It starts searching for elem
+// from the beginning of the sequence until its last valid index. If elem is found,
+// out is set to True.
+program sequentialSearch[s: Seq, elem: Elem, out: Bool] var [i:Int] {
+	out := False;
+	i := 0;	
+	while ( i<s.length and isFalse[out] ) do {
+		if (s.at[i]=elem) {
+			 out := True 
+		};
+		i:= add[i,1]
+	} 
+}
+
+run sequentialSearch for 1 Seq, 5 Elem, 5 int lurs  5 
+
+// Partial correctness assertion for sequential search. Program returns true iff
+// the element being searched belongs to the sequence.
+assertCorrectness SequentialSearchIsCorrect[s: Seq, elem: Elem, out: Bool] {
+	pre { s.length >= 0 }
+	program {
+		call sequentialSearch[s,elem,out]
+	}
+	post { isTrue[out'] <=> (some x: Int | x>=0 and x<s.length and s.at[x]=elem) } 
+}
+
+check SequentialSearchIsCorrect for 1 Seq, 5 Elem, 5 int lurs  5 
