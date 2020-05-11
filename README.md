@@ -17,12 +17,15 @@ Last release:
 
 `$ java -jar dynalloy.jar`
 
+java 1.8 required
 
 ---
 
 ##### [Tutorial](https://github.com/gregistecco/dynalloy/wiki)
 
 ##### [Sample Models](https://github.com/gregistecco/dynalloy/tree/master/Sample%20Models)
+
+##### [New debbuger-like trace visualization](https://github.com/gregistecco/dynalloy/wiki)
 
 ---
 
