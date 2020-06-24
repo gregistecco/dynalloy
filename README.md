@@ -29,7 +29,7 @@ java 1.8 required
 
 ---
 
-### Current Colaborators
+### Current Collaborators
 
 - César Cornejo
 - Germán Regis
